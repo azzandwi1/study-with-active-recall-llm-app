@@ -1,0 +1,9 @@
+# Create .gitignore to exclude unnecessary files
+echo "node_modules/
+.next/
+.env.local
+.env
+*.log
+.DS_Store
+dist/
+build/" > .gitignore
