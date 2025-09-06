@@ -26,15 +26,16 @@ Pastikan Anda sudah menginstall:
 1. **Clone Repository**
    \`\`\`bash
    git clone https://github.com/azzandwi1/study-with-active-recall-llm-app.git
+   
    cd study-with-active-recall-llm-app
    \`\`\`
 
-2. **Install Dependencies**
+3. **Install Dependencies**
    \`\`\`bash
    npm install
    \`\`\`
 
-3. **Setup Environment Variables**
+4. **Setup Environment Variables**
    
    Buat file `.env.local` di root directory:
    \`\`\`bash
@@ -44,12 +45,12 @@ Pastikan Anda sudah menginstall:
    # Tambahkan environment variables lain sesuai kebutuhan backend
    \`\`\`
 
-4. **Jalankan Development Server**
+5. **Jalankan Development Server**
    \`\`\`bash
    npm run dev
    \`\`\`
 
-5. **Buka di Browser**
+6. **Buka di Browser**
    
    Aplikasi akan berjalan di: `http://localhost:3000`
 
