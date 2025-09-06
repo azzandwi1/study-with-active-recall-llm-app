@@ -95,32 +95,6 @@ Pastikan Anda sudah menginstall:
 - **Animations:** CSS Transitions & Transforms
 - **Icons:** Lucide React
 
-## 📁 Struktur Project
-
-\`\`\`
-├── app/
-│   ├── page.tsx              # Landing page
-│   ├── layout.tsx            # Root layout
-│   ├── globals.css           # Global styles
-│   ├── ingest/
-│   │   └── page.tsx          # Content upload page
-│   ├── learn/
-│   │   └── page.tsx          # Learning interface
-│   └── settings/
-│       └── page.tsx          # API key & settings
-├── components/
-│   ├── ui/                   # shadcn/ui components
-│   ├── api-key-gate.tsx      # API key validation
-│   ├── flashcard.tsx         # Flashcard component
-│   ├── quiz-prompt.tsx       # Quiz interface
-│   ├── progress-ring.tsx     # Progress indicator
-│   └── ...                   # Other components
-├── lib/
-│   ├── api.ts               # API utilities
-│   └── utils.ts             # Helper functions
-└── README.md
-\`\`\`
-
 ## 🔧 Konfigurasi Backend
 
 Aplikasi ini membutuhkan backend API yang menyediakan endpoint:
