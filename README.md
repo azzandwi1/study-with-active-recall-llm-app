@@ -17,7 +17,7 @@ Aplikasi pembelajaran berbasis Active Recall yang menggunakan AI untuk membantu 
 ### Prasyarat
 
 Pastikan Anda sudah menginstall:
-- **Node.js** (versi 18 atau lebih tinggi) - [Download di sini](https://nodejs.org/)
+- **Node.js** (versi 20 atau lebih tinggi) - [Download di sini](https://nodejs.org/)
 - **npm** (biasanya sudah termasuk dengan Node.js)
 - **Git** - [Download di sini](https://git-scm.com/)
 
@@ -25,7 +25,7 @@ Pastikan Anda sudah menginstall:
 
 1. **Clone Repository**
    \`\`\`bash
-   git clone https://github.com/YOUR_USERNAME/study-with-active-recall-llm-app.git
+   git clone https://github.com/azzandwi1/study-with-active-recall-llm-app.git
    cd study-with-active-recall-llm-app
    \`\`\`
 
