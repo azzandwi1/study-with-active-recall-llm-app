@@ -1,0 +1,374 @@
+{
+  "info": {
+    "name": "Active Recall Backend API",
+    "description": "Collection for testing Active Recall Backend API endpoints",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:8000",
+      "type": "string"
+    },
+    {
+      "key": "api_key",
+      "value": "YOUR_GEMINI_API_KEY_HERE",
+      "type": "string"
+    },
+    {
+      "key": "collection_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "session_id",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Health Checks",
+      "item": [
+        {
+          "name": "Basic Health Check",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/health",
+              "host": ["{{base_url}}"],
+              "path": ["health"]
+            }
+          }
+        },
+        {
+          "name": "Readiness Check",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/health/ready",
+              "host": ["{{base_url}}"],
+              "path": ["health", "ready"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Content Ingestion",
+      "item": [
+        {
+          "name": "Ingest Text Content",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-User-Gemini-Key",
+                "value": "{{api_key}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "source_type",
+                  "value": "text",
+                  "type": "text"
+                },
+                {
+                  "key": "text",
+                  "value": "Active recall is a study technique that involves actively retrieving information from memory rather than passively reading or reviewing material. This technique has been shown to be more effective than traditional study methods because it strengthens memory traces and improves long-term retention. The process involves testing yourself on material you've learned, which forces your brain to work harder to recall information, making the memory stronger.",
+                  "type": "text"
+                },
+                {
+                  "key": "collection_name",
+                  "value": "Test Collection",
+                  "type": "text"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/ingest",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "ingest"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    pm.collectionVariables.set('collection_id', response.collection_id);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Ingest URL Content",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-User-Gemini-Key",
+                "value": "{{api_key}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "source_type",
+                  "value": "url",
+                  "type": "text"
+                },
+                {
+                  "key": "url",
+                  "value": "https://en.wikipedia.org/wiki/Active_recall",
+                  "type": "text"
+                },
+                {
+                  "key": "collection_id",
+                  "value": "{{collection_id}}",
+                  "type": "text"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/ingest",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "ingest"]
+            }
+          }
+        },
+        {
+          "name": "List Collections",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/ingest/collections",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "ingest", "collections"]
+            }
+          }
+        },
+        {
+          "name": "Get Collection Details",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/ingest/collections/{{collection_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "ingest", "collections", "{{collection_id}}"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Flashcard Generation",
+      "item": [
+        {
+          "name": "Generate Flashcards",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "X-User-Gemini-Key",
+                "value": "{{api_key}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"collection_id\": \"{{collection_id}}\",\n  \"n_cards\": 5,\n  \"style\": \"basic\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/generate/flashcards",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "generate", "flashcards"]
+            }
+          }
+        },
+        {
+          "name": "Get Collection Flashcards",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/generate/flashcards/{{collection_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "generate", "flashcards", "{{collection_id}}"]
+            }
+          }
+        },
+        {
+          "name": "Get Collection Stats",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/generate/collections/{{collection_id}}/stats",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "generate", "collections", "{{collection_id}}", "stats"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Quiz Management",
+      "item": [
+        {
+          "name": "Start Quiz",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"collection_id\": \"{{collection_id}}\",\n  \"count\": 5,\n  \"strategy\": \"mixed\",\n  \"user_id\": \"test_user\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/quiz/start",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "quiz", "start"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    pm.collectionVariables.set('session_id', response.session_id);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Check Quiz Answer",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "X-User-Gemini-Key",
+                "value": "{{api_key}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"card_id\": \"REPLACE_WITH_ACTUAL_CARD_ID\",\n  \"user_answer\": \"Active recall is a study technique that involves actively retrieving information from memory.\",\n  \"context\": \"strict\",\n  \"user_id\": \"test_user\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/quiz/check",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "quiz", "check"]
+            }
+          }
+        },
+        {
+          "name": "Get Quiz Session",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/quiz/sessions/{{session_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "quiz", "sessions", "{{session_id}}"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Spaced Repetition",
+      "item": [
+        {
+          "name": "Get Review Schedule",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/review/schedule?user_id=test_user&days_ahead=7",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "review", "schedule"],
+              "query": [
+                {
+                  "key": "user_id",
+                  "value": "test_user"
+                },
+                {
+                  "key": "days_ahead",
+                  "value": "7"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Due Cards",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/review/due?user_id=test_user&limit=10",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "review", "due"],
+              "query": [
+                {
+                  "key": "user_id",
+                  "value": "test_user"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Review Stats",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/review/stats/test_user",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "review", "stats", "test_user"]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
