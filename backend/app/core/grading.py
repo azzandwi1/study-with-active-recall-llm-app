@@ -102,8 +102,8 @@ class GradingService:
             llm_service = LLMService()
             response = llm_service.generate_content(prompt, api_key)
             
-            # Parse JSON response
-            result = json.loads(response)
+            # Parse JSON response with robust cleaning
+            result = self._parse_json_response(response)
             return result
             
         except json.JSONDecodeError as e:
@@ -112,6 +112,64 @@ class GradingService:
         except Exception as e:
             logger.error(f"AI grading generation failed: {e}")
             raise
+    
+    def _parse_json_response(self, response_text: str) -> Dict[str, Any]:
+        """Parse JSON response with robust cleaning"""
+        import json
+        import re
+        
+        # Clean the response text - remove markdown code blocks if present
+        cleaned_text = response_text.strip()
+        
+        # Remove markdown code blocks
+        if cleaned_text.startswith('```json'):
+            cleaned_text = cleaned_text[7:]  # Remove ```json
+        elif cleaned_text.startswith('```'):
+            cleaned_text = cleaned_text[3:]   # Remove ```
+        
+        if cleaned_text.endswith('```'):
+            cleaned_text = cleaned_text[:-3]  # Remove trailing ```
+        
+        cleaned_text = cleaned_text.strip()
+        
+        # Try to find the first complete JSON object
+        # Look for the first '{' and try to find the matching closing bracket
+        start_idx = -1
+        for i, char in enumerate(cleaned_text):
+            if char == '{':
+                start_idx = i
+                break
+        
+        if start_idx != -1:
+            # Find the matching closing bracket
+            bracket_count = 0
+            end_idx = -1
+            for i in range(start_idx, len(cleaned_text)):
+                if cleaned_text[i] == '{':
+                    bracket_count += 1
+                elif cleaned_text[i] == '}':
+                    bracket_count -= 1
+                    if bracket_count == 0:
+                        end_idx = i
+                        break
+            
+            if end_idx != -1:
+                cleaned_text = cleaned_text[start_idx:end_idx + 1]
+        
+        try:
+            return json.loads(cleaned_text)
+        except json.JSONDecodeError as e:
+            logger.error(f"Failed to parse JSON response: {e}")
+            logger.error(f"Original response text: {response_text}")
+            logger.error(f"Cleaned response text: {cleaned_text}")
+            
+            # Try to fix common JSON issues
+            try:
+                # Remove any trailing commas before closing brackets
+                fixed_text = re.sub(r',(\s*[}\]])', r'\1', cleaned_text)
+                return json.loads(fixed_text)
+            except json.JSONDecodeError:
+                raise ValueError(f"Invalid JSON response: {e}")
     
     def _validate_grading_result(self, ai_result: Dict[str, Any]) -> GradingResult:
         """Validate and structure AI grading result"""

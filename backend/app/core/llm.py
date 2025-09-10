@@ -1,6 +1,8 @@
 import logging
 from typing import Dict, Any, Optional
-import google.generativeai as genai
+from google import genai
+from google.genai import types
+from google.genai import errors
 from app.core.settings import settings
 
 logger = logging.getLogger(__name__)
@@ -25,24 +27,19 @@ class LLMService:
             Generated content as string
         """
         try:
-            # Configure Gemini with user's API key
-            genai.configure(api_key=api_key)
+            # Create client with user's API key
+            client = genai.Client(api_key=api_key)
             
-            # Initialize model
-            model = genai.GenerativeModel(self.model_name)
-            
-            # Set generation parameters
-            generation_config = genai.types.GenerationConfig(
-                temperature=kwargs.get('temperature', 0.7),
-                top_p=kwargs.get('top_p', 0.8),
-                top_k=kwargs.get('top_k', 40),
-                max_output_tokens=kwargs.get('max_output_tokens', 2048),
-            )
-            
-            # Generate content
-            response = model.generate_content(
-                prompt,
-                generation_config=generation_config
+            # Generate content using new SDK
+            response = client.models.generate_content(
+                model=self.model_name,
+                contents=prompt,
+                config=types.GenerateContentConfig(
+                    temperature=kwargs.get('temperature', 0.7),
+                    top_p=kwargs.get('top_p', 0.8),
+                    top_k=kwargs.get('top_k', 40),
+                    max_output_tokens=kwargs.get('max_output_tokens', 2048),
+                )
             )
             
             if not response.text:
@@ -50,6 +47,9 @@ class LLMService:
             
             return response.text.strip()
             
+        except errors.APIError as e:
+            logger.error(f"LLM API error: {e.code} - {e.message}")
+            raise
         except Exception as e:
             logger.error(f"LLM content generation failed: {e}")
             raise
@@ -77,12 +77,61 @@ class LLMService:
             
             # Parse JSON response
             import json
+            import re
+            
+            # Clean the response text - remove markdown code blocks if present
+            cleaned_text = response_text.strip()
+            
+            # Remove markdown code blocks
+            if cleaned_text.startswith('```json'):
+                cleaned_text = cleaned_text[7:]  # Remove ```json
+            elif cleaned_text.startswith('```'):
+                cleaned_text = cleaned_text[3:]   # Remove ```
+            
+            if cleaned_text.endswith('```'):
+                cleaned_text = cleaned_text[:-3]  # Remove trailing ```
+            
+            cleaned_text = cleaned_text.strip()
+            
+            # Try to find the first complete JSON array or object
+            # Look for the first '[' or '{' and try to find the matching closing bracket
+            start_idx = -1
+            for i, char in enumerate(cleaned_text):
+                if char in '[{':
+                    start_idx = i
+                    break
+            
+            if start_idx != -1:
+                # Find the matching closing bracket
+                bracket_count = 0
+                end_idx = -1
+                for i in range(start_idx, len(cleaned_text)):
+                    if cleaned_text[i] in '[{':
+                        bracket_count += 1
+                    elif cleaned_text[i] in ']}':
+                        bracket_count -= 1
+                        if bracket_count == 0:
+                            end_idx = i
+                            break
+                
+                if end_idx != -1:
+                    cleaned_text = cleaned_text[start_idx:end_idx + 1]
+            
             try:
-                return json.loads(response_text)
+                return json.loads(cleaned_text)
             except json.JSONDecodeError as e:
                 logger.error(f"Failed to parse JSON response: {e}")
-                logger.error(f"Response text: {response_text}")
-                raise ValueError(f"Invalid JSON response: {e}")
+                logger.error(f"Original response text: {response_text}")
+                logger.error(f"Cleaned response text: {cleaned_text}")
+                
+                # Try to fix common JSON issues
+                try:
+                    # Remove any trailing commas before closing brackets
+                    import re
+                    fixed_text = re.sub(r',(\s*[}\]])', r'\1', cleaned_text)
+                    return json.loads(fixed_text)
+                except json.JSONDecodeError:
+                    raise ValueError(f"Invalid JSON response: {e}")
             
         except Exception as e:
             logger.error(f"Structured content generation failed: {e}")
@@ -99,11 +148,11 @@ class LLMService:
             True if API key is valid
         """
         try:
-            # Configure Gemini with the API key
-            genai.configure(api_key=api_key)
+            # Create client with the API key
+            client = genai.Client(api_key=api_key)
             
             # Try to list models (simple validation)
-            models = genai.list_models()
+            models = client.models.list()
             
             # Check if our target model is available
             model_names = [model.name for model in models]
@@ -111,6 +160,9 @@ class LLMService:
             
             return target_model in model_names
             
+        except errors.APIError as e:
+            logger.error(f"API key validation failed: {e.code} - {e.message}")
+            return False
         except Exception as e:
             logger.error(f"API key validation failed: {e}")
             return False
@@ -126,8 +178,8 @@ class LLMService:
             Dictionary with model information
         """
         try:
-            genai.configure(api_key=api_key)
-            models = genai.list_models()
+            client = genai.Client(api_key=api_key)
+            models = client.models.list()
             
             model_info = {
                 'available_models': [],
@@ -138,9 +190,9 @@ class LLMService:
             for model in models:
                 model_data = {
                     'name': model.name,
-                    'display_name': model.display_name,
-                    'description': model.description,
-                    'supported_generation_methods': model.supported_generation_methods
+                    'display_name': getattr(model, 'display_name', model.name),
+                    'description': getattr(model, 'description', ''),
+                    'supported_generation_methods': getattr(model, 'supported_generation_methods', [])
                 }
                 model_info['available_models'].append(model_data)
                 
@@ -149,6 +201,14 @@ class LLMService:
             
             return model_info
             
+        except errors.APIError as e:
+            logger.error(f"Failed to get model info: {e.code} - {e.message}")
+            return {
+                'error': f"{e.code}: {e.message}",
+                'available_models': [],
+                'target_model': f"models/{self.model_name}",
+                'target_model_available': False
+            }
         except Exception as e:
             logger.error(f"Failed to get model info: {e}")
             return {

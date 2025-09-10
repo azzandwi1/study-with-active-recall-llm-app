@@ -73,11 +73,19 @@ export default function IngestPage() {
       setCurrentStep("Membuat flashcard...")
       setProgress(60)
 
+      if (!extractResult.collection_id) {
+        throw new Error("Gagal mendapatkan ID koleksi dari server")
+      }
+
+      // Store the collection ID for use in the learn page
+      localStorage.setItem('latest_collection_id', extractResult.collection_id)
+
       const flashcardsResponse = await apiRequest("/api/v1/generate/flashcards", {
         method: "POST",
         body: JSON.stringify({
-          text: extractResult.extractedText,
-          difficulty: "medium",
+          collection_id: extractResult.collection_id,
+          n_cards: 5,
+          style: "basic",
         }),
       })
 

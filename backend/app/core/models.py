@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Text, DateTime, Boolean, Float, ForeignKey, JSON, Index
+from sqlalchemy import Column, Integer, String, Text, DateTime, Boolean, Float, ForeignKey, JSON, Index, Table
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
@@ -7,6 +7,14 @@ import uuid
 
 Base = declarative_base()
 
+
+# Association table for many-to-many between chunks and flashcards
+flashcard_chunks = Table(
+    "flashcard_chunks",
+    Base.metadata,
+    Column("chunk_id", String, ForeignKey("chunks.id", ondelete="CASCADE"), primary_key=True),
+    Column("flashcard_id", String, ForeignKey("flashcards.id", ondelete="CASCADE"), primary_key=True),
+)
 
 class Collection(Base):
     __tablename__ = "collections"
@@ -33,7 +41,7 @@ class Document(Base):
     filename = Column(String(255))  # For file uploads
     title = Column(String(500))
     content = Column(Text)
-    metadata = Column(JSON)  # Store additional metadata
+    meta = Column(JSON)  # Store additional metadata
     word_count = Column(Integer, default=0)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     
@@ -51,12 +59,12 @@ class Chunk(Base):
     content = Column(Text, nullable=False)
     token_count = Column(Integer, default=0)
     embedding_vector = Column(JSON)  # Store embedding as JSON array
-    metadata = Column(JSON)  # Store chunk-specific metadata
+    meta = Column(JSON)  # Store chunk-specific metadata
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     
     # Relationships
     document = relationship("Document", back_populates="chunks")
-    flashcards = relationship("Flashcard", back_populates="source_chunks")
+    flashcards = relationship("Flashcard", secondary=flashcard_chunks, back_populates="chunks")
     
     # Indexes
     __table_args__ = (
@@ -80,7 +88,7 @@ class Flashcard(Base):
     
     # Relationships
     collection = relationship("Collection", back_populates="flashcards")
-    source_chunks = relationship("Chunk", back_populates="flashcards")
+    chunks = relationship("Chunk", secondary=flashcard_chunks, back_populates="flashcards")
     reviews = relationship("Review", back_populates="flashcard", cascade="all, delete-orphan")
     quiz_questions = relationship("QuizQuestion", back_populates="flashcard", cascade="all, delete-orphan")
 

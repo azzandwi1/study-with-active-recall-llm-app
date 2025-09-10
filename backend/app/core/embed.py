@@ -1,6 +1,8 @@
 import logging
 from typing import List, Dict, Optional
-import google.generativeai as genai
+from google import genai
+from google.genai import types
+from google.genai import errors
 import numpy as np
 from app.core.settings import settings
 
@@ -26,8 +28,8 @@ class EmbeddingService:
             List of embedding vectors
         """
         try:
-            # Configure Gemini with user's API key
-            genai.configure(api_key=api_key)
+            # Create client with user's API key
+            client = genai.Client(api_key=api_key)
             
             # Process texts in batches to avoid rate limits
             batch_size = 10  # Adjust based on API limits
@@ -35,7 +37,7 @@ class EmbeddingService:
             
             for i in range(0, len(texts), batch_size):
                 batch = texts[i:i + batch_size]
-                batch_embeddings = self._get_batch_embeddings(batch)
+                batch_embeddings = self._get_batch_embeddings(batch, client)
                 all_embeddings.extend(batch_embeddings)
                 
                 # Small delay between batches
@@ -46,24 +48,33 @@ class EmbeddingService:
             logger.info(f"Generated {len(all_embeddings)} embeddings")
             return all_embeddings
             
+        except errors.APIError as e:
+            logger.error(f"Embedding API error: {e.code} - {e.message}")
+            raise
         except Exception as e:
             logger.error(f"Embedding generation failed: {e}")
             raise
     
-    def _get_batch_embeddings(self, texts: List[str]) -> List[List[float]]:
+    def _get_batch_embeddings(self, texts: List[str], client: genai.Client) -> List[List[float]]:
         """Get embeddings for a batch of texts"""
         try:
-            # Use Gemini's embedding model
-            model = genai.GenerativeModel(self.model_name)
-            
             embeddings = []
             for text in texts:
                 # Clean and prepare text
                 clean_text = self._prepare_text_for_embedding(text)
                 
-                # Get embedding
-                result = model.embed_content(clean_text)
-                embedding = result['embedding']
+                # Get embedding using new SDK
+                response = client.models.embed_content(
+                    model=self.model_name,
+                    contents=clean_text
+                )
+                
+                # Extract embedding from response
+                # Based on the SDK structure: response.embeddings[0].values
+                if hasattr(response, 'embeddings') and response.embeddings:
+                    embedding = response.embeddings[0].values
+                else:
+                    raise ValueError("Could not extract embedding from response - no embeddings found")
                 
                 # Validate embedding
                 if len(embedding) != self.dimension:
@@ -73,6 +84,9 @@ class EmbeddingService:
             
             return embeddings
             
+        except errors.APIError as e:
+            logger.error(f"Batch embedding API error: {e.code} - {e.message}")
+            raise
         except Exception as e:
             logger.error(f"Batch embedding failed: {e}")
             raise

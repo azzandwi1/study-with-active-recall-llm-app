@@ -12,7 +12,7 @@ from app.core.web import WebScraper
 from app.core.chunk import TextChunker
 from app.core.embed import EmbeddingService
 from app.core.rag import FAISSIndex
-from app.main import get_api_key
+from app.core.deps import get_api_key
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -32,11 +32,12 @@ class IngestRequest:
 
 @router.post("/ingest")
 async def ingest_content(
-    source_type: str = Form(...),
+    type: str = Form(...),  # Frontend sends 'type'
     collection_id: Optional[str] = Form(None),
     collection_name: Optional[str] = Form(None),
     url: Optional[str] = Form(None),
     text: Optional[str] = Form(None),
+    content: Optional[str] = Form(None),  # Frontend sends 'content' for text/url
     file: Optional[UploadFile] = File(None),
     db: Session = Depends(get_db),
     api_key: str = Depends(get_api_key)
@@ -45,12 +46,13 @@ async def ingest_content(
     Ingest content from various sources (PDF, URL, text)
     
     Args:
-        source_type: Type of source ('pdf', 'url', 'text')
+        type: Type of source ('pdf', 'url', 'text')
         collection_id: Existing collection ID (optional)
         collection_name: Name for new collection (optional)
-        url: URL to scrape (for 'url' source_type)
-        text: Text content (for 'text' source_type)
-        file: Uploaded file (for 'pdf' source_type)
+        url: URL to scrape (for 'url' type)
+        text: Text content (for 'text' type)
+        content: Content from frontend (for 'url' or 'text' type)
+        file: Uploaded file (for 'pdf' type)
         db: Database session
         api_key: User's Gemini API key
         
@@ -59,35 +61,39 @@ async def ingest_content(
     """
     try:
         # Validate source type
-        if source_type not in ['pdf', 'url', 'text']:
-            raise HTTPException(status_code=400, detail="Invalid source_type. Must be 'pdf', 'url', or 'text'")
+        if type not in ['pdf', 'url', 'text']:
+            raise HTTPException(status_code=400, detail="Invalid type. Must be 'pdf', 'url', or 'text'")
         
         # Get or create collection
         collection = await _get_or_create_collection(db, collection_id, collection_name)
         
         # Process content based on source type
-        if source_type == 'pdf':
+        if type == 'pdf':
             if not file:
                 raise HTTPException(status_code=400, detail="File is required for PDF ingestion")
             content, metadata = await _process_pdf(file)
-        elif source_type == 'url':
-            if not url:
+        elif type == 'url':
+            # Use 'content' field from frontend for URL
+            url_to_process = content or url
+            if not url_to_process:
                 raise HTTPException(status_code=400, detail="URL is required for URL ingestion")
-            content, metadata = await _process_url(url)
-        elif source_type == 'text':
-            if not text:
+            content, metadata = await _process_url(url_to_process)
+        elif type == 'text':
+            # Use 'content' field from frontend for text
+            text_to_process = content or text
+            if not text_to_process:
                 raise HTTPException(status_code=400, detail="Text content is required for text ingestion")
-            content, metadata = await _process_text(text)
+            content, metadata = await _process_text(text_to_process)
         
         # Create document record
         document = Document(
             collection_id=collection.id,
-            source_type=source_type,
-            source_url=url if source_type == 'url' else None,
+            source_type=type,
+            source_url=url_to_process if type == 'url' else None,
             filename=file.filename if file else None,
             title=metadata.get('title', 'Untitled'),
             content=content,
-            metadata=metadata,
+            meta=metadata,
             word_count=metadata.get('word_count', 0)
         )
         db.add(document)
@@ -111,7 +117,7 @@ async def ingest_content(
                 content=chunk_data['content'],
                 token_count=chunk_data['token_count'],
                 embedding_vector=embedding,
-                metadata={
+                meta={
                     'heading': chunk_data.get('heading', ''),
                     'level': chunk_data.get('level', 0),
                     **chunk_data.get('metadata', {})
@@ -126,7 +132,7 @@ async def ingest_content(
             {
                 'chunk_id': chunk.id,
                 'content': chunk.content,
-                'heading': chunk.metadata.get('heading', ''),
+                'heading': (chunk.meta or {}).get('heading', ''),
                 'document_id': document.id
             }
             for chunk in chunks
@@ -139,7 +145,7 @@ async def ingest_content(
         # Commit all changes
         db.commit()
         
-        logger.info(f"Successfully ingested {source_type} content into collection {collection.id}")
+        logger.info(f"Successfully ingested {type} content into collection {collection.id}")
         
         return {
             "success": True,

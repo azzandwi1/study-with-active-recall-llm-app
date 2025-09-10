@@ -1,7 +1,8 @@
 from pydantic_settings import BaseSettings
 from pydantic import Field
 from pathlib import Path
-from typing import Optional
+from typing import Optional, List
+import json
 
 
 class Settings(BaseSettings):
@@ -29,7 +30,11 @@ class Settings(BaseSettings):
     port: int = Field(default=8000, env="PORT")
     
     # CORS
-    cors_origins: list[str] = Field(default=["http://localhost:3000"])
+    cors_origins: List[str] = Field(default=["http://localhost:3000"])
+    cors_origins_raw: Optional[str] = Field(default=None, env="CORS_ORIGINS")
+
+    # Debug
+    debug: bool = Field(default=False, env="DEBUG")
     
     # Chunking settings
     chunk_size: int = Field(default=800)
@@ -62,6 +67,21 @@ class Settings(BaseSettings):
         
         # Calculate max upload bytes
         self.max_upload_bytes = self.max_upload_mb * 1024 * 1024
+
+        # Normalize CORS origins from env: accept JSON array or comma-separated
+        if self.cors_origins_raw:
+            parsed: Optional[List[str]] = None
+            try:
+                maybe_json = self.cors_origins_raw.strip()
+                if maybe_json.startswith("["):
+                    parsed = json.loads(maybe_json)
+                else:
+                    parsed = [o.strip() for o in self.cors_origins_raw.split(",") if o.strip()]
+            except Exception:
+                parsed = None
+
+            if parsed:
+                self.cors_origins = parsed
 
 
 settings = Settings()

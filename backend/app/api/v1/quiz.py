@@ -8,7 +8,7 @@ from datetime import datetime
 from app.core.database import get_db
 from app.core.models import Collection, Flashcard, QuizSession, QuizQuestion, Review, Chunk
 from app.core.sm2 import SpacedRepetitionService, SM2Parameters
-from app.main import get_api_key
+from app.core.deps import get_api_key
 
 logger = logging.getLogger(__name__)
 router = APIRouter()

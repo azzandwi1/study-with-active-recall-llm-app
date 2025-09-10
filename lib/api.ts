@@ -21,7 +21,18 @@ export async function apiRequest(endpoint: string, options: RequestInit = {}) {
   })
 
   if (!response.ok) {
-    throw new Error(`API request failed: ${response.statusText}`)
+    let errorMessage = `API request failed: ${response.statusText}`
+    
+    try {
+      const errorData = await response.json()
+      if (errorData.detail) {
+        errorMessage = errorData.detail
+      }
+    } catch {
+      // If we can't parse the error response, use the default message
+    }
+    
+    throw new Error(errorMessage)
   }
 
   return response.json()

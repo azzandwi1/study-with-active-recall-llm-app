@@ -8,7 +8,7 @@ from app.core.models import Collection, Flashcard, Chunk
 from app.core.rag import RAGService
 from app.core.llm import LLMService
 from app.core.prompts import PromptBuilder, FlashcardStyle
-from app.main import get_api_key
+from app.core.deps import get_api_key
 
 logger = logging.getLogger(__name__)
 router = APIRouter()

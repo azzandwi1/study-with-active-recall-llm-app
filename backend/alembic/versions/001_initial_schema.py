@@ -36,7 +36,7 @@ def upgrade() -> None:
         sa.Column('filename', sa.String(length=255), nullable=True),
         sa.Column('title', sa.String(length=500), nullable=True),
         sa.Column('content', sa.Text(), nullable=True),
-        sa.Column('metadata', sa.JSON(), nullable=True),
+        sa.Column('meta', sa.JSON(), nullable=True),
         sa.Column('word_count', sa.Integer(), nullable=True),
         sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=True),
         sa.ForeignKeyConstraint(['collection_id'], ['collections.id'], ),
@@ -51,7 +51,7 @@ def upgrade() -> None:
         sa.Column('content', sa.Text(), nullable=False),
         sa.Column('token_count', sa.Integer(), nullable=True),
         sa.Column('embedding_vector', sa.JSON(), nullable=True),
-        sa.Column('metadata', sa.JSON(), nullable=True),
+        sa.Column('meta', sa.JSON(), nullable=True),
         sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=True),
         sa.ForeignKeyConstraint(['document_id'], ['documents.id'], ),
         sa.PrimaryKeyConstraint('id')

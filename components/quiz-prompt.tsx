@@ -13,10 +13,10 @@ import { apiRequest } from "@/lib/api"
 
 interface QuizPromptProps {
   question: {
-    id: string
+    card_id: string
     question: string
-    correctAnswer: string
     difficulty: "easy" | "medium" | "hard"
+    tags: string[]
   }
   currentIndex: number
   totalQuestions: number
@@ -52,19 +52,23 @@ export function QuizPrompt({ question, currentIndex, totalQuestions, onNext, onC
       const response = await apiRequest("/api/v1/quiz/check", {
         method: "POST",
         body: JSON.stringify({
-          questionId: question.id,
-          userAnswer: userAnswer.trim(),
-          correctAnswer: question.correctAnswer,
+          card_id: question.card_id,
+          user_answer: userAnswer.trim(),
+          context: "strict",
+          user_id: "default_user",
         }),
       })
 
       setVerdict({
-        correct: response.correct,
+        correct: response.verdict === "correct",
         feedback: response.feedback,
       })
     } catch (error) {
-      // Fallback evaluation for demo
-      const isCorrect = userAnswer.toLowerCase().includes(question.correctAnswer.toLowerCase().substring(0, 10))
+      // Fallback evaluation for demo - simple keyword matching
+      const keywords = question.question.toLowerCase().split(' ').slice(0, 3)
+      const isCorrect = keywords.some(keyword => 
+        userAnswer.toLowerCase().includes(keyword)
+      )
       setVerdict({
         correct: isCorrect,
         feedback: isCorrect
@@ -135,8 +139,8 @@ export function QuizPrompt({ question, currentIndex, totalQuestions, onNext, onC
                   >
                     <Card className="rounded-xl bg-muted/50">
                       <CardContent className="p-4">
-                        <h4 className="font-medium text-foreground mb-2">Jawaban yang Benar:</h4>
-                        <p className="text-sm text-muted-foreground leading-relaxed">{question.correctAnswer}</p>
+                        <h4 className="font-medium text-foreground mb-2">Feedback:</h4>
+                        <p className="text-sm text-muted-foreground leading-relaxed">{verdict.feedback}</p>
                       </CardContent>
                     </Card>
                   </motion.div>

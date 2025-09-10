@@ -7,6 +7,7 @@ from app.core.settings import settings
 from app.core.database import init_db, get_db
 from app.core.logging_config import setup_logging
 from app.core.exceptions import ActiveRecallException
+from app.core.deps import get_api_key
 from app.api.v1 import ingest, generate, quiz, review, health
 
 # Configure logging
@@ -45,18 +46,7 @@ app.add_middleware(
 )
 
 
-# Dependency to get API key from headers
-def get_api_key(request: Request) -> str:
-    """Extract and validate API key from request headers"""
-    api_key = request.headers.get("X-User-Gemini-Key")
-    
-    if not api_key:
-        raise HTTPException(
-            status_code=401,
-            detail="X-User-Gemini-Key header is required for all LLM operations"
-        )
-    
-    return api_key
+# get_api_key is provided by app.core.deps
 
 
 # Custom exception handler for ActiveRecallException

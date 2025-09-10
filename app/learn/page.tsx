@@ -26,10 +26,10 @@ interface FlashcardData {
 }
 
 interface QuizQuestion {
-  id: string
+  card_id: string
   question: string
-  correctAnswer: string
   difficulty: "easy" | "medium" | "hard"
+  tags: string[]
 }
 
 interface LearningStats {
@@ -62,7 +62,36 @@ export default function LearnPage() {
 
   const loadFlashcards = async () => {
     try {
-      // Mock data for demonstration
+      // Get the latest collection from localStorage (set during ingest)
+      const latestCollectionId = localStorage.getItem('latest_collection_id')
+      
+      if (latestCollectionId) {
+        try {
+          const response = await apiRequest(`/api/v1/generate/flashcards/${latestCollectionId}`)
+          if (response.flashcards && response.flashcards.length > 0) {
+            const apiFlashcards: FlashcardData[] = response.flashcards.map((card: any) => ({
+              id: card.id,
+              question: card.question,
+              answer: card.answer,
+              difficulty: card.difficulty,
+              mastered: false, // This would come from user progress in a real app
+            }))
+            setFlashcards(apiFlashcards)
+            setStats((prev) => ({
+              ...prev,
+              totalCards: apiFlashcards.length,
+              masteredCards: apiFlashcards.filter((c) => c.mastered).length,
+            }))
+            return
+          }
+        } catch (apiError) {
+          console.log("No flashcards found for latest collection, using mock data")
+        }
+      } else {
+        console.log("No collection ID found, using mock data")
+      }
+      
+      // Fallback to mock data if API fails
       const mockFlashcards: FlashcardData[] = [
         {
           id: "1",
@@ -111,11 +140,25 @@ export default function LearnPage() {
 
   const startQuiz = async () => {
     try {
+      // Get the latest collection from localStorage (set during ingest)
+      const latestCollectionId = localStorage.getItem('latest_collection_id')
+      
+      if (!latestCollectionId) {
+        toast({
+          title: "Error",
+          description: "Tidak ada koleksi tersedia. Silakan buat flashcard terlebih dahulu.",
+          variant: "destructive",
+        })
+        return
+      }
+      
       const response = await apiRequest("/api/v1/quiz/start", {
         method: "POST",
         body: JSON.stringify({
-          length: Number.parseInt(quizLength),
-          difficulty: "mixed",
+          collection_id: latestCollectionId,
+          count: Number.parseInt(quizLength),
+          strategy: "mixed",
+          user_id: "default_user",
         }),
       })
 
