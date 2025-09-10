@@ -35,47 +35,87 @@ Aplikasi pembelajaran berbasis Active Recall yang menggunakan AI untuk membantu 
 
 ## 🚀 Cara Menjalankan Aplikasi
 
-### Prasyarat
+### Opsi A (Paling Mudah): Backend pakai Docker, Frontend lokal
 
-Pastikan Anda sudah menginstall:
+Prasyarat:
 
-* **Node.js** (versi 20.19 atau lebih tinggi) – [Download di sini](https://nodejs.org/)
-* **npm** (biasanya sudah termasuk dengan Node.js)
-* **Git** – [Download di sini](https://git-scm.com/)
+* **Docker Desktop** (Windows/macOS/Linux)
+* **Node.js** ≥ 20.19 + **npm**
+* **Git**
 
-### Langkah Instalasi
+Langkah:
 
-1. **Clone Repository**
+1) Clone repo
 
-   ```sh
-   git clone https://github.com/azzandwi1/study-with-active-recall-llm-app.git
-   cd study-with-active-recall-llm-app
-   ```
+```sh
+git clone https://github.com/azzandwi1/study-with-active-recall-llm-app.git
+cd study-with-active-recall-llm-app
+```
 
-2. **Install Dependencies**
+2) Jalankan backend (Docker Compose)
 
-   ```sh
-   npm install
-   ```
+```sh
+cd backend
+copy env.example .env   # Windows PowerShell: Copy-Item env.example .env
+docker-compose up -d
+# Cek kesehatan
+curl http://localhost:8000/health || Invoke-WebRequest http://localhost:8000/health -UseBasicParsing
+cd ..
+```
 
-3. **Setup Environment Variables**
-   Buat file `.env.local` di root directory:
+3) Siapkan frontend
 
-   ```sh
-   # Backend API URL (ganti dengan URL backend Anda)
-   NEXT_PUBLIC_BACKEND_URL=http://localhost:8000
+```sh
+npm install
+```
 
-   # Tambahkan environment variables lain sesuai kebutuhan backend
-   ```
+4) Buat file `.env.local` (root project)
 
-4. **Jalankan Development Server**
+```sh
+echo NEXT_PUBLIC_BACKEND_URL=http://localhost:8000> .env.local
+```
 
-   ```sh
-   npm run dev
-   ```
+5) Jalankan frontend
 
-5. **Buka di Browser**
-   [http://localhost:3000](http://localhost:3000)
+```sh
+npm run dev
+```
+
+6) Buka aplikasi: [http://localhost:3000](http://localhost:3000)
+
+7) Masukkan Gemini API Key di halaman `Settings` → simpan.
+
+Catatan:
+
+* Backend akan tersedia di `http://localhost:8000` (docs: `http://localhost:8000/docs`).
+* Jika port bentrok, ubah `PORT` di `backend/.env` dan sesuaikan `NEXT_PUBLIC_BACKEND_URL`.
+
+### Opsi B: Jalankan semuanya tanpa Docker (advanced)
+
+Ini hanya disarankan bila Anda tidak dapat memakai Docker. Backend memiliki dependensi berat (OCR, FAISS).
+
+1) Backend (Python)
+
+```sh
+cd backend
+python -m venv .venv
+. .venv/Scripts/Activate.ps1   # Windows PowerShell
+pip install -r requirements.txt
+copy env.example .env          # PowerShell: Copy-Item env.example .env
+
+# (Opsional) Jalankan Postgres lokal dan sesuaikan DATABASE_URL di .env
+# Lalu start server
+uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+```
+
+2) Frontend (Next.js)
+
+```sh
+cd ..
+npm install
+echo NEXT_PUBLIC_BACKEND_URL=http://localhost:8000> .env.local
+npm run dev
+```
 
 ---
 
