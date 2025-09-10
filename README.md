@@ -216,4 +216,3 @@ Jika Anda mengalami masalah atau memiliki pertanyaan:
 ---
 
 **Happy Learning! 🎓**
-Dibuat dengan ❤️ menggunakan Next.js dan Gemini AI
