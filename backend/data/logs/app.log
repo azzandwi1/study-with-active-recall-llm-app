@@ -87,3 +87,21 @@
 2025-09-10 06:54:26 | INFO     | app.main:lifespan:21 - Starting Active Recall Backend API
 2025-09-10 06:54:27 | INFO     | app.main:lifespan:23 - Database initialized
 2025-09-10 07:01:47 | INFO     | app.main:lifespan:28 - Shutting down Active Recall Backend API
+2025-09-10 14:13:05 | INFO     | app.main:lifespan:21 - Starting Active Recall Backend API
+2025-09-10 14:13:05 | INFO     | app.main:lifespan:23 - Database initialized
+2025-09-11 13:37:37 | INFO     | app.main:lifespan:28 - Shutting down Active Recall Backend API
+2025-09-11 13:37:45 | INFO     | app.main:lifespan:21 - Starting Active Recall Backend API
+2025-09-11 13:37:45 | INFO     | app.main:lifespan:23 - Database initialized
+2025-09-11 14:22:25 | INFO     | app.main:lifespan:28 - Shutting down Active Recall Backend API
+2025-09-11 14:23:15 | INFO     | app.main:lifespan:21 - Starting Active Recall Backend API
+2025-09-11 14:23:15 | INFO     | app.main:lifespan:23 - Database initialized
+2025-09-11 14:29:55 | INFO     | app.main:lifespan:28 - Shutting down Active Recall Backend API
+2025-09-11 14:30:03 | INFO     | app.main:lifespan:21 - Starting Active Recall Backend API
+2025-09-11 14:30:03 | INFO     | app.main:lifespan:23 - Database initialized
+2025-09-11 14:34:52 | INFO     | app.main:lifespan:28 - Shutting down Active Recall Backend API
+2025-09-11 14:35:00 | INFO     | app.main:lifespan:21 - Starting Active Recall Backend API
+2025-09-11 14:35:00 | INFO     | app.main:lifespan:23 - Database initialized
+2025-09-11 14:39:38 | INFO     | app.main:lifespan:28 - Shutting down Active Recall Backend API
+2025-09-11 14:39:46 | INFO     | app.main:lifespan:21 - Starting Active Recall Backend API
+2025-09-11 14:39:47 | INFO     | app.main:lifespan:23 - Database initialized
+2025-09-11 15:10:14 | INFO     | app.main:lifespan:28 - Shutting down Active Recall Backend API

@@ -288,7 +288,7 @@ class RAGService:
             logger.error(f"RAG retrieval failed: {e}")
             return []
     
-    def create_context_from_chunks(self, chunks: List[Dict], max_tokens: int = 2000) -> str:
+    def create_context_from_chunks(self, chunks: List[Dict], max_tokens: int = 2000, per_chunk_max_chars: int = 2000) -> str:
         """
         Create context string from retrieved chunks
         
@@ -307,6 +307,9 @@ class RAGService:
                 # Format chunk content
                 heading = chunk.get('heading', '')
                 content = chunk.get('content', '')
+                # Trim per-chunk length to avoid massive prompts
+                if len(content) > per_chunk_max_chars:
+                    content = content[:per_chunk_max_chars].rsplit(' ', 1)[0] + '...'
                 score = chunk.get('score', 0.0)
                 
                 if heading:

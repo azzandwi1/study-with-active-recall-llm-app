@@ -27,25 +27,57 @@ class LLMService:
             Generated content as string
         """
         try:
+            import time
+            
             # Create client with user's API key
             client = genai.Client(api_key=api_key)
             
-            # Generate content using new SDK
-            response = client.models.generate_content(
-                model=self.model_name,
-                contents=prompt,
-                config=types.GenerateContentConfig(
-                    temperature=kwargs.get('temperature', 0.7),
-                    top_p=kwargs.get('top_p', 0.8),
-                    top_k=kwargs.get('top_k', 40),
-                    max_output_tokens=kwargs.get('max_output_tokens', 2048),
-                )
-            )
+            # Proactively truncate overly large prompts
+            input_token_limit = kwargs.get('input_token_limit', 6000)
+            if self.estimate_tokens(prompt) > input_token_limit:
+                prompt = self.truncate_to_tokens(prompt, input_token_limit)
             
-            if not response.text:
-                raise ValueError("Empty response from LLM")
+            # Retry with exponential backoff on transient/empty responses
+            max_attempts = kwargs.get('max_attempts', 3)
+            backoff_base = kwargs.get('backoff_base', 0.8)
+            last_error: Optional[Exception] = None
             
-            return response.text.strip()
+            for attempt in range(1, max_attempts + 1):
+                try:
+                    response = client.models.generate_content(
+                        model=self.model_name,
+                        contents=prompt,
+                        config=types.GenerateContentConfig(
+                            temperature=kwargs.get('temperature', 0.7),
+                            top_p=kwargs.get('top_p', 0.8),
+                            top_k=kwargs.get('top_k', 40),
+                            max_output_tokens=kwargs.get('max_output_tokens', 2048),
+                        )
+                    )
+                    if response and getattr(response, 'text', None):
+                        return response.text.strip()
+                    last_error = ValueError("Empty response from LLM")
+                    logger.warning("Received empty response from LLM; retrying...")
+                except errors.APIError as e:
+                    last_error = e
+                    # Retry on common transient statuses
+                    retryable_codes = {429, 500, 502, 503, 504}
+                    if getattr(e, 'code', None) in retryable_codes:
+                        logger.warning(f"LLM API error {e.code}; attempt {attempt}/{max_attempts} will retry")
+                    else:
+                        logger.error(f"LLM API error: {e.code} - {e.message}")
+                        raise
+                except Exception as e:
+                    last_error = e
+                    logger.warning(f"LLM content generation attempt {attempt} failed: {e}")
+                
+                # Backoff before next attempt
+                if attempt < max_attempts:
+                    sleep_seconds = (backoff_base ** attempt) * 1.5
+                    time.sleep(sleep_seconds)
+            
+            # If all attempts failed
+            raise last_error or RuntimeError("LLM content generation failed")
             
         except errors.APIError as e:
             logger.error(f"LLM API error: {e.code} - {e.message}")
@@ -131,6 +163,137 @@ class LLMService:
                     fixed_text = re.sub(r',(\s*[}\]])', r'\1', cleaned_text)
                     return json.loads(fixed_text)
                 except json.JSONDecodeError:
+                    # Attempt partial array/object recovery for truncated outputs
+                    try:
+                        def recover_array(text: str) -> str:
+                            # Build an array from fully closed objects within a possibly truncated JSON array
+                            objs = []
+                            i = 0
+                            n = len(text)
+                            # find opening '['
+                            while i < n and text[i] != '[':
+                                i += 1
+                            if i == n:
+                                return text
+                            i += 1
+                            while i < n:
+                                # skip whitespace and commas
+                                while i < n and text[i] in ' \n\r\t,':
+                                    i += 1
+                                if i >= n or text[i] != '{':
+                                    break
+                                # capture object
+                                start = i
+                                brace = 0
+                                in_str = False
+                                esc = False
+                                while i < n:
+                                    ch = text[i]
+                                    if in_str:
+                                        if esc:
+                                            esc = False
+                                        elif ch == '\\':
+                                            esc = True
+                                        elif ch == '"':
+                                            in_str = False
+                                    else:
+                                        if ch == '"':
+                                            in_str = True
+                                        elif ch == '{':
+                                            brace += 1
+                                        elif ch == '}':
+                                            brace -= 1
+                                            if brace == 0:
+                                                i += 1
+                                                objs.append(text[start:i])
+                                                break
+                                    i += 1
+                                if brace != 0:
+                                    # truncated object; stop
+                                    break
+                            return '[' + ','.join(objs) + ']'
+                        
+                        if cleaned_text.strip().startswith('['):
+                            recovered = recover_array(cleaned_text)
+                            return json.loads(recovered)
+                        elif cleaned_text.strip().startswith('{'):
+                            # Trim to last closing brace for single object
+                            last = cleaned_text.rfind('}')
+                            if last != -1:
+                                return json.loads(cleaned_text[:last+1])
+                    except Exception:
+                        pass
+                    
+                    # Final attempt: ask model to continue truncated JSON and merge
+                    try:
+                        client = genai.Client(api_key=api_key)
+                        # Detect if looks truncated (no closing bracket)
+                        looks_array = cleaned_text.strip().startswith('[') and not cleaned_text.strip().endswith(']')
+                        looks_object = cleaned_text.strip().startswith('{') and not cleaned_text.strip().endswith('}')
+                        if looks_array or looks_object:
+                            tail = cleaned_text[-500:]
+                            continuation_prompt = (
+                                "The following JSON was truncated. Continue ONLY the JSON continuation to complete it. "
+                                "Do not repeat earlier content. No prose, no code fences. Ensure valid JSON closure.\n\n"
+                                f"Truncated tail (for context):\n{tail}\n\n"
+                                "Output: the continuation only."
+                            )
+                            cont_resp = client.models.generate_content(
+                                model=self.model_name,
+                                contents=continuation_prompt,
+                                config=types.GenerateContentConfig(
+                                    temperature=0.2,
+                                    max_output_tokens=kwargs.get('continuation_max_tokens', 512),
+                                )
+                            )
+                            cont_text = (getattr(cont_resp, 'text', '') or '').strip()
+                            # Clean fences from continuation
+                            if cont_text.startswith('```json'):
+                                cont_text = cont_text[7:]
+                            elif cont_text.startswith('```'):
+                                cont_text = cont_text[3:]
+                            if cont_text.endswith('```'):
+                                cont_text = cont_text[:-3]
+                            cont_text = cont_text.strip()
+                            merged = cleaned_text + cont_text
+                            # Try same fixes on merged
+                            merged_fixed = re.sub(r',(\s*[}\]])', r'\1', merged)
+                            # Try to find complete structure bounding
+                            start_idx = -1
+                            for i, ch in enumerate(merged_fixed):
+                                if ch in '[{':
+                                    start_idx = i
+                                    break
+                            if start_idx != -1:
+                                # find matching
+                                depth = 0
+                                end_idx = -1
+                                in_str = False
+                                esc = False
+                                for i in range(start_idx, len(merged_fixed)):
+                                    ch = merged_fixed[i]
+                                    if in_str:
+                                        if esc:
+                                            esc = False
+                                        elif ch == '\\':
+                                            esc = True
+                                        elif ch == '"':
+                                            in_str = False
+                                    else:
+                                        if ch == '"':
+                                            in_str = True
+                                        elif ch in '[{':
+                                            depth += 1
+                                        elif ch in ']}':
+                                            depth -= 1
+                                            if depth == 0:
+                                                end_idx = i
+                                                break
+                                if end_idx != -1:
+                                    merged_fixed = merged_fixed[start_idx:end_idx+1]
+                            return json.loads(merged_fixed)
+                    except Exception:
+                        pass
                     raise ValueError(f"Invalid JSON response: {e}")
             
         except Exception as e:
