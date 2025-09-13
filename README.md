@@ -227,32 +227,4 @@ npm run lint     # Run ESLint
 
 ---
 
-## 📄 Lisensi
-
-Project ini menggunakan lisensi MIT. Lihat file `LICENSE` untuk detail lengkap.
-
----
-
-## 🤝 Kontribusi
-
-Kontribusi sangat diterima! Silakan:
-
-1. Fork repository ini
-2. Buat branch untuk fitur Anda
-3. Commit perubahan
-4. Push ke branch
-5. Buat Pull Request
-
----
-
-## 📞 Support
-
-Jika Anda mengalami masalah atau memiliki pertanyaan:
-
-* Buat **Issue** di GitHub repository
-* Periksa **Troubleshooting** section di atas
-* Review dokumentasi API backend
-
----
-
 **Happy Learning! 🎓**
